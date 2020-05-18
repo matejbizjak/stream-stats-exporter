@@ -172,7 +172,7 @@ func runAnalysis(streamUrl string, streamingTime int) (float64, float64, error) 
 func getBitrate(videoUrl string, streamingTime int, wg *sync.WaitGroup) (float64, error) {
 	defer wg.Done()
 
-	if err := vlc.Init(); err != nil {
+	if err := vlc.Init("--no-video", "--quiet"); err != nil {
 		return 0, err
 	}
 	defer vlc.Release()
