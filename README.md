@@ -46,8 +46,8 @@ monitoring_success 1
       - <another url>
   params:
     streamingTime: [3]
-  scrape_interval: 30
-  scrape_timeout: 25
+  scrape_interval: 30s
+  scrape_timeout: 20s
   relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
