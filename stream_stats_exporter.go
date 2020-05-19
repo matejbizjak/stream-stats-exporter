@@ -30,12 +30,12 @@ var (
 	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
 	//streamingTime = kingpin.Flag("analysis.streaming-time", "Time of the connection to the stream.").Default("5").Duration()
 
-	// Metrics about the iperf3 exporter itself.
+	// Metrics about the Stream Stats Exporter itself.
 	ssDuration = prometheus.NewSummary(prometheus.SummaryOpts{Name: prometheus.BuildFQName(namespace, "exporter", "duration_seconds"), Help: "Duration of collections by the Stream Stats Exporter."})
 	ssErrors   = prometheus.NewCounter(prometheus.CounterOpts{Name: prometheus.BuildFQName(namespace, "exporter", "errors_total"), Help: "Errors raised by the Stream Stats Exporter."})
 )
 
-// Exporter collects iperf3 stats from the given address and exports them using
+// Exporter collects network stats from the given address and exports them using
 // the prometheus metrics package.
 type Exporter struct {
 	target        string
@@ -55,12 +55,12 @@ func NewExporter(target string, period time.Duration, streamingTime int) *Export
 		period:        period,
 		streamingTime: streamingTime,
 		success:       prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "success"), "Was the last measurement for the probe successful.", nil, nil),
-		bitrate:       prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "bitrate"), "Bitrate of the stream.", nil, nil),
-		latency:       prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "latency"), "Latency of the target.", nil, nil),
+		bitrate:       prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "bitrate"), "Bitrate of the stream in kbit/s.", nil, nil),
+		latency:       prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "latency"), "Latency of the target in ms.", nil, nil),
 	}
 }
 
-// Describe describes all the metrics exported by the iperf3 exporter. It
+// Describe describes all the metrics exported by the Stream Stats Exporter. It
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.success
@@ -68,13 +68,12 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- e.latency
 }
 
-// Collect probes the configured iperf3 server and delivers them as Prometheus
+// Collect measures network stats and delivers them as Prometheus
 // metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.mutex.Lock() // To protect metrics from concurrent collects.
 	defer e.mutex.Unlock()
 
-	//out, err := exec.CommandContext(ctx, iperfCmd, "-J", "-t", strconv.FormatFloat(e.period.Seconds(), 'f', 0, 64), "-c", e.target, "-p", strconv.Itoa(e.port)).Output()
 	bitrate, latency, err := runAnalysis(e.target, e.streamingTime)
 	if err != nil {
 		ch <- prometheus.MustNewConstMetric(e.success, prometheus.GaugeValue, 0)
