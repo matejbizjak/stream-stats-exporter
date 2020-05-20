@@ -39,7 +39,6 @@ var (
 // the prometheus metrics package.
 type Exporter struct {
 	target        string
-	period        time.Duration
 	streamingTime int
 	mutex         sync.RWMutex
 
@@ -49,10 +48,9 @@ type Exporter struct {
 }
 
 // NewExporter returns an initialized Exporter.
-func NewExporter(target string, period time.Duration, streamingTime int) *Exporter {
+func NewExporter(target string, streamingTime int) *Exporter {
 	return &Exporter{
 		target:        target,
-		period:        period,
 		streamingTime: streamingTime,
 		success:       prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "success"), "Was the last measurement for the probe successful.", nil, nil),
 		bitrate:       prometheus.NewDesc(prometheus.BuildFQName(namespace, "", "bitrate"), "Bitrate of the stream in kbit/s.", nil, nil),
@@ -95,23 +93,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var runPeriod time.Duration
-	var period = r.URL.Query().Get("period")
-	if period != "" {
-		var err error
-		runPeriod, err = time.ParseDuration(period)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("'period' parameter must be a duration: %s", err), http.StatusBadRequest)
-			ssErrors.Inc()
-			return
-		}
-	}
-	if runPeriod.Seconds() == 0 {
-		runPeriod = time.Second * 5
-	}
-
 	var streamingTime int
-	period = r.URL.Query().Get("streamingTime")
+	var period = r.URL.Query().Get("streamingTime")
 	if period != "" {
 		var err error
 		streamingTime, err = strconv.Atoi(period)
@@ -127,7 +110,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	start := time.Now()
 	registry := prometheus.NewRegistry()
-	exporter := NewExporter(target, runPeriod, streamingTime)
+	exporter := NewExporter(target, streamingTime)
 	registry.MustRegister(exporter)
 
 	// Delegate http serving to Prometheus client library, which will call collector.Collect.
